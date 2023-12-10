@@ -4,48 +4,99 @@ author: "Juliana Cruz Gonzáles"
 date: "2023-12-08"
 output: html_document
 ---
-T1: UI
+T1: UI & T2: Server
 
 ```{r}
 library(shiny)
 library(shinydashboard)
+library(ggplot2)
+library(dplyr)
+library(shinythemes)
 
 ui <- dashboardPage(
-  dashboardHeader(),
+  skin = "green",
+  dashboardHeader(title = "Libertades"),
   dashboardSidebar(
-     sidebarMenu(
-      menuItem("SelectI", tabName = "selecti", icon = icon("dashboard")),
-      menuItem("Slider", tabName = "slideri", icon = icon("th")),
-      menuItem("Bottom", tabName = "bottomi", icon = icon("th")),
-      menuItem("Download", tabName = "downloadi")
-    )
-    
+    selectInput("pais_input", "Seleccioná el país", choices = unique(datos_libertad$pais)),
+    sliderInput("anio_input", "Seleccioná el año",
+                min = min(datos_libertad$anio), max = max(datos_libertad$anio),
+                value = c(min(datos_libertad$anio), max(datos_libertad$anio))),
+    radioButtons("modo_input", "Seleccioná ranking o puntaje",
+                 choices = c("Ranking", "Puntaje"), selected = "Ranking"),
+    downloadButton("descargar_btn", "Descarga los datos")
   ),
   dashboardBody(
-    tabItems(
-      # First tab content
-      tabItem(tabName = "dashboard",
-        fluidRow(
-          box(plotOutput("plot1", height = 250)),
-
-          box(
-            title = "Controls",
-            sliderInput("slider", "Number of observations:", 1, 100, 50)
-          )
-        )
-      ),
-
-      # Second tab content
-      tabItem(tabName = "widgets",
-        h2("Widgets tab content")
+    theme = shinytheme("cosmo"),
+    navbarPage(
+      "Libertad Humana",
+      tabPanel(
+        "Gráfico", 
+        plotOutput("grafico_humana")
+      )
+    ),
+    navbarPage(
+      "Libertad Personal",
+      tabPanel(
+        "Gráfico", 
+        plotOutput("grafico_personal")
+      )
+    ),
+    navbarPage(
+      "Libertad Económica",
+      tabPanel(
+        "Gráfico", 
+        plotOutput("grafico_economica")
       )
     )
-    
   )
 )
 
-server <- function(input, output) { }
+server <- function(input, output) {
+  
+  datos_libertad <- read.csv("/Users/julianacruz/Desktop/shiny_apps2/datos/datos_libertad.csv")
+  
+  datos_filtrados <- reactive({
+    req(input$pais_input, input$anio_input)  
+    filtered_data <- filter(datos_libertad, pais == input$pais_input & anio >= input$anio_input[1] & anio <= input$anio_input[2])
+    cat("Datos filtrados:", nrow(filtered_data), "filas\n")
+    return(filtered_data)
+  })
+  
+  output$grafico_humana <- renderPlot({
+    cat("Generando gráfico de libertad humana...\n")
+    req(datos_filtrados())  # Requerir datos para manejar casos vacíos
+    y_col <- if (input$modo_input == "Ranking") "libertad_humana_ranking" else "libertad_humana_puntaje"
+    ggplot(datos_filtrados(), aes(x = anio, y = get(y_col), color = factor(pais))) +
+      geom_point(size = 5, alpha = 0.7, color = "aquamarine2") +
+      labs(title = "Libertad Humana", x = "Año", y = input$modo_input)
+  })
+  
+  output$grafico_personal <- renderPlot({
+    req(datos_filtrados())
+    y_col <- if (input$modo_input == "Ranking") "libertad_personal_ranking" else "libertad_personal_puntaje"
+    ggplot(datos_filtrados(), aes(x = anio, y = get(y_col), color = factor(pais))) +
+      geom_point(size = 6, alpha = 0.7, color = "aquamarine3") +
+      labs(title = "Libertad Personal", x = "Año", y = input$modo_input)
+  })
+  
+  output$grafico_economica <- renderPlot({
+    req(datos_filtrados())
+    y_col <- if (input$modo_input == "Ranking") "libertad_economica_ranking" else "libertad_economica_puntaje"
+    ggplot(datos_filtrados(), aes(x = anio, y = get(y_col), color = factor(pais))) +
+      geom_point(size = 7, alpha = 0.7, color = "aquamarine4") +
+      labs(title = "Libertad Económica", x = "Año", y = input$modo_input)
+  })
+  
+  output$descargar_btn <- downloadHandler(
+    filename = function() {
+      paste("datos_", input$pais_input, "_", input$anio_input[1], "_", input$anio_input[2], ".csv", sep = "")
+    },
+    content = function(file) {
+      write.csv(datos_filtrados(), file, row.names = FALSE)
+    }
+  )
+}
 
 shinyApp(ui, server)
-```
 
+```
