@@ -1,0 +1,51 @@
+---
+title: "practica_programada2"
+author: "Juliana Cruz Gonzáles"
+date: "2023-12-08"
+output: html_document
+---
+T1: UI
+
+```{r}
+library(shiny)
+library(shinydashboard)
+
+ui <- dashboardPage(
+  dashboardHeader(),
+  dashboardSidebar(
+     sidebarMenu(
+      menuItem("SelectI", tabName = "selecti", icon = icon("dashboard")),
+      menuItem("Slider", tabName = "slideri", icon = icon("th")),
+      menuItem("Bottom", tabName = "bottomi", icon = icon("th")),
+      menuItem("Download", tabName = "downloadi")
+    )
+    
+  ),
+  dashboardBody(
+    tabItems(
+      # First tab content
+      tabItem(tabName = "dashboard",
+        fluidRow(
+          box(plotOutput("plot1", height = 250)),
+
+          box(
+            title = "Controls",
+            sliderInput("slider", "Number of observations:", 1, 100, 50)
+          )
+        )
+      ),
+
+      # Second tab content
+      tabItem(tabName = "widgets",
+        h2("Widgets tab content")
+      )
+    )
+    
+  )
+)
+
+server <- function(input, output) { }
+
+shinyApp(ui, server)
+```
+
